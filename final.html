@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Object Detection & Analysis</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-gray-900 text-white">
+    <canvas id="bg-canvas"></canvas>
+
+    <div class="relative min-h-screen flex flex-col items-center justify-center p-4">
+        <div class="w-full max-w-7xl text-center">
+            <div class="mb-6">
+                <div class="inline-block p-2 bg-blue-500/20 rounded-full mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-400 text-glow"><path d="M15.5 21a.5.5 0 0 1-.5-.5v-13a.5.5 0 0 1 .5-.5h.5a.5.5 0 0 1 .5.5v13a.5.5 0 0 1-.5.5h-.5z"/><path d="M8.5 21a.5.5 0 0 1-.5-.5v-13a.5.5 0 0 1 .5-.5h.5a.5.5 0 0 1 .5.5v13a.5.5 0 0 1-.5.5h-.5z"/><path d="M12 14a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 .5-.5h.5a.5.5 0 0 1 .5.5v10a.5.5 0 0 1-.5.5h-.5z"/><path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/></svg>
+                </div>
+                <h1 class="text-4xl md:text-5xl font-bold text-blue-300 text-glow mb-2">AI Object Detection & Analysis</h1>
+                <p class="text-lg text-gray-300 max-w-3xl mx-auto">
+                    A comprehensive suite for running and evaluating your custom YOLO model.
+                </p>
+            </div>
+
+            <div class="mb-6 flex justify-center space-x-2 bg-gray-800/50 p-1 rounded-lg max-w-sm mx-auto">
+                <button id="btn-detector" class="tab-btn tab-active px-6 py-2 rounded-md transition">Detector</button>
+                <button id="btn-analysis" class="tab-btn px-6 py-2 rounded-md transition text-gray-400">Analysis</button>
+            </div>
+
+            <div id="page-container" class="bg-gray-800/50 backdrop-blur-md rounded-2xl p-6 shadow-2xl border border-gray-700 overflow-y-auto" style="max-height: 80vh;">
+                <div id="detector-page">
+                    <label for="image-input" class="drop-zone w-full p-10 flex flex-col items-center justify-center cursor-pointer rounded-xl" id="drop-zone">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="text-gray-400 mb-4"><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7"/><line x1="16" y1="5" x2="22" y2="5"/><line x1="19" y1="2" x2="19" y2="8"/><path d="m15 12-3.44 3.44a1 1 0 0 0 1.42 1.42l.16-.16.16-.16L17 13"/></svg>
+                        <p class="text-gray-300">Click to upload or drag and drop an image</p>
+                        <p class="text-sm text-gray-500">PNG, JPG, or WEBP</p>
+                    </label>
+                    <input type="file" id="image-input" accept="image/*">
+                    <div id="output-container" class="mt-6 hidden">
+                        <canvas id="output-canvas" class="w-full h-auto rounded-lg"></canvas>
+                    </div>
+                    <div id="loader" class="mt-6 text-center text-blue-400 hidden">
+                        <p>Analyzing image...</p>
+                    </div>
+                </div>
+
+                <div id="analysis-page" class="hidden text-left">
+                    <h2 class="text-2xl font-bold text-blue-300 mb-4">Performance Analysis Report</h2>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                        <div class="bg-gray-700/50 p-4 rounded-lg">
+                            <h3 class="text-gray-400 text-sm">mAP @ 0.5 IoU</h3>
+                            <p class="text-3xl font-bold text-cyan-400">94.6%</p>
+                        </div>
+                        <div class="bg-gray-700/50 p-4 rounded-lg">
+                            <h3 class="text-gray-400 text-sm">Precision</h3>
+                            <p class="text-3xl font-bold text-cyan-400">92.1%</p>
+                        </div>
+                        <div class="bg-gray-700/50 p-4 rounded-lg">
+                            <h3 class="text-gray-400 text-sm">Recall</h3>
+                            <p class="text-3xl font-bold text-cyan-400">96.8%</p>
+                        </div>
+                    </div>
+
+                    <div class="space-y-8">
+                        <div class="max-w-3xl mx-auto">
+                            <h3 class="text-xl font-semibold text-blue-300 mb-2">Confusion Matrix (Normalized)</h3>
+                            <div class="bg-gray-700/50 p-4 rounded-lg">
+                               <canvas id="confusionMatrixChart"></canvas>
+                            </div>
+                        </div>
+
+                        <div>
+                             <h3 class="text-xl font-semibold text-blue-300 mb-2">Training & Validation Metrics</h3>
+                             <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                                <div class="bg-gray-700/50 p-2 rounded-lg"><canvas id="chart1"></canvas></div>
+                                <div class="bg-gray-700/50 p-2 rounded-lg"><canvas id="chart2"></canvas></div>
+                                <div class="bg-gray-700/50 p-2 rounded-lg"><canvas id="chart3"></canvas></div>
+                                <div class="bg-gray-700/50 p-2 rounded-lg"><canvas id="chart4"></canvas></div>
+                                <div class="bg-gray-700/50 p-2 rounded-lg"><canvas id="chart5"></canvas></div>
+                                <div class="bg-gray-700/50 p-2 rounded-lg"><canvas id="chart6"></canvas></div>
+                                <div class="bg-gray-700/50 p-2 rounded-lg"><canvas id="chart7"></canvas></div>
+                                <div class="bg-gray-700/50 p-2 rounded-lg"><canvas id="chart8"></canvas></div>
+                             </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-8">
+                        <h3 class="text-xl font-semibold text-blue-300 mb-2">Failure Case Analysis</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <div class="bg-gray-700/50 p-3 rounded-lg">
+                                <img src="https://placehold.co/600x400/1f2937/9ca3af?text=Heavy+Occlusion" class="rounded-md mb-2" alt="Heavy Occlusion" onerror="this.onerror=null;this.src='https://placehold.co/600x400/1f2937/ff0000?text=Image+Error';">
+                                <h4 class="font-semibold">Heavy Occlusion</h4>
+                                <p class="text-sm text-gray-400">Model failed to detect a toolbox partially hidden behind an oxygen tank.</p>
+                            </div>
+                            <div class="bg-gray-700/50 p-3 rounded-lg">
+                                <img src="https://placehold.co/600x400/1f2937/9ca3af?text=Poor+Lighting" class="rounded-md mb-2" alt="Poor Lighting" onerror="this.onerror=null;this.src='https://placehold.co/600x400/1f2937/ff0000?text=Image+Error';">
+                                <h4 class="font-semibold">Poor Lighting</h4>
+                                <p class="text-sm text-gray-400">Low confidence score for a fire extinguisher in a dimly lit area of the station.</p>
+                            </div>
+                            <div class="bg-gray-700/50 p-3 rounded-lg">
+                                <img src="https://placehold.co/600x400/1f2937/9ca3af?text=Unusual+Angle" class="rounded-md mb-2" alt="Unusual Angle" onerror="this.onerror=null;this.src='https://placehold.co/600x400/1f2937/ff0000?text=Image+Error';">
+                                <h4 class="font-semibold">Unusual Angle</h4>
+                                <p class="text-sm text-gray-400">Oxygen tank viewed from the top was misclassified as a toolbox.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="script.js"></script>
+</body>
+</html>
